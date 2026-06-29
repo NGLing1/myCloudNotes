@@ -1,0 +1,7 @@
+Flask==2.3.0
+flask-cors==4.0.0
+PyJWT==2.8.0
+bcrypt==4.0.1
+CouchDB==1.2
+requests==2.31.0
+user-agents==2.2.0  

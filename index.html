@@ -1,0 +1,3812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>myCloudNote</title>
+    
+    <!-- PWA Configuration -->
+    <meta name="theme-color" content="#54b9ef">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="myCloudNote">
+    <meta name="description" content="Application de prise de notes avec synchronisation cloud">
+    
+    <!-- Manifest PWA -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./myCloudNotes.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./myCloudNotes.png">
+    
+    <!-- PouchDB -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/8.0.1/pouchdb.min.js"></script>
+    
+    <!-- Styles - VOTRE CSS EXISTANT + LE NOUVEAU CSS SERA DANS UN AUTRE ARTIFACT -->
+    <style>
+/* ============================================
+   STYLES.CSS - Fichier CSS Principal
+   ============================================ */
+
+/* RESET & VARIABLES */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Couleurs principales */
+    --primary: #54b9ef;
+    --primary-dark: #3a9dd6;
+    --primary-light: #e8f6fd;
+    
+    /* Couleurs neutres */
+    --white: #ffffff;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    
+    /* Couleurs sémantiques */
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    
+    /* Ombres */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* Rayons de bordure */
+    --radius-sm: 0.375rem;
+    --radius: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    
+    /* Transitions */
+    --transition: all 0.2s ease;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* UTILITIES */
+.hidden {
+    display: none !important;
+}
+
+/* ============================================
+   PAGE AUTHENTIFICATION
+   ============================================ */
+
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    padding: 2rem 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.4;
+}
+
+.auth-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-card {
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(10px);
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.auth-title {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+    color: var(--gray-600);
+    font-size: 0.95rem;
+}
+
+.auth-section {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-form {
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--gray-700);
+    margin-bottom: 0.5rem;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--gray-300);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background: var(--white);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.form-input::placeholder {
+    color: var(--gray-400);
+}
+
+.auth-switch {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--gray-600);
+}
+
+.link-primary {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.link-primary:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.error-message {
+    background: #fee2e2;
+    color: var(--danger);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    
+}
+
+/* Page Confirmation */
+.confirm-card {
+    max-width: 400px;
+    text-align: center;
+}
+
+.confirm-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary), var(--primary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.confirm-icon svg {
+    width: 40px;
+    height: 40px;
+    color: var(--white);
+}
+
+.confirm-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+}
+
+.confirm-text {
+    color: var(--gray-600);
+    margin-bottom: 2rem;
+}
+
+.code-inputs {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.code-input {
+    width: 50px;
+    height: 60px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    background: var(--white);
+}
+
+.code-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* ============================================
+   BOUTONS
+   ============================================ */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary));
+    color: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--gray-100);
+    color: var(--gray-700);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-200);
+}
+
+.btn-secondary.active {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: var(--white);
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* Boutons header mobile */
+.btn-icon {
+    background: transparent;
+    border: none;
+    padding: 0.4rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    color: var(--gray-600);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.btn-icon svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+.btn-icon:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+
+.btn-icon.active {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    color: var(--gray-400);
+    transition: var(--transition);
+}
+
+.btn-close:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* ============================================
+   PAGE ACCUEIL
+   ============================================ */
+
+.home-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--gray-50);
+}
+
+/* Header */
+.app-header {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 0.5rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0; /* Important pour le text-overflow */
+}
+
+.header-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    flex-shrink: 0;
+}
+
+.header-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+/* Sync badge responsive */
+.sync-badge {
+    display: none; /* Caché par défaut sur mobile */
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.sync-badge.sync-syncing {
+    background: #fef3c7;
+    color: var(--warning);
+}
+
+.sync-badge.sync-synced {
+    background: #d1fae5;
+    color: var(--success);
+}
+
+.sync-badge.sync-offline {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+/* Toolbar */
+
+/* Toolbar responsive */
+.toolbar {
+    background: var(--white);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.search-box {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    color: var(--gray-400);
+    pointer-events: none;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 1.5px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    background: var(--gray-50);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--white);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Notes Container */
+.notes-container {
+    flex: 1;
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+}
+
+.notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Note Card */
+.note-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.note-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.note-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.note-card:hover::before {
+    opacity: 1;
+}
+
+.note-card.list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.note-header {
+    margin-bottom: 0.75rem;
+}
+
+.note-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-preview {
+    font-size: 0.95rem;
+    color: var(--gray-600);
+    line-height: 1.6;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    margin-bottom: 0.75rem;
+}
+
+.note-card.list-view .note-preview {
+    -webkit-line-clamp: 2;
+}
+
+.note-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.note-date {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.empty-state svg {
+    width: 80px;
+    height: 80px;
+    color: var(--gray-300);
+    margin-bottom: 1.5rem;
+}
+
+.empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: var(--gray-600);
+    font-size: 1rem;
+}
+
+/* ============================================
+   PAGE PARAMÈTRES
+   ============================================ */
+
+.settings-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--gray-50);
+}
+
+.settings-container {
+    flex: 1;
+    padding: 2rem 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.settings-section {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.settings-section.danger-section {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.section-title svg {
+    width: 24px;
+    height: 24px;
+    color: var(--primary);
+}
+
+.danger-section .section-title svg {
+    color: var(--danger);
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.item-label {
+    font-weight: 500;
+    color: var(--gray-900);
+    font-size: 0.95rem;
+}
+
+.item-value {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+}
+
+.item-description {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+    margin-top: 0.25rem;
+}
+
+.empty-text {
+    color: var(--gray-500);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* Device Card */
+.device-card {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.device-card:last-child {
+    margin-bottom: 0;
+}
+
+.device-icon {
+    font-size: 1.5rem;
+}
+
+.device-info {
+    flex: 1;
+}
+
+.device-name {
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.device-details {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    line-height: 1.4;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: var(--success);
+}
+
+/* ============================================
+   MODALES
+   ============================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-xl);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.modal-small {
+    max-width: 500px;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#backFromNoteBtn {
+    flex-shrink: 0;
+}
+
+.note-title-input {
+    flex: 1;
+}
+
+.modal-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.note-title-input {
+    flex: 1;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 600;
+    outline: none;
+    color: var(--gray-900);
+    padding: 0.5rem 0;
+}
+
+.note-title-input::placeholder {
+    color: var(--gray-400);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.note-content-input {
+    width: 100%;
+    min-height: 400px;
+    border: none;
+    resize: vertical;
+    font-size: 1rem;
+    line-height: 1.7;
+    outline: none;
+    font-family: inherit;
+    color: var(--gray-900);
+    background: transparent;
+}
+
+.note-content-input::placeholder {
+    color: var(--gray-400);
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.save-status {
+    font-size: 0.875rem;
+    color: var(--gray-500);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .auth-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .app-header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .header-title {
+        font-size: 1.125rem;
+    }
+    
+ .header-title {
+        font-size: 1rem;
+    }
+    
+    .header-logo {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .btn-icon {
+        padding: 0.35rem;
+    }
+    
+    .btn-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    /* Cacher certains boutons sur mobile */
+    #viewGridBtn,
+    #viewListBtn {
+        display: none;
+    }
+    
+    .toolbar {
+        padding: 0.75rem 1rem;
+    }
+    
+    #newNoteBtn {
+        padding: 0.5rem;
+        min-width: 40px;
+        justify-content: center;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .notes-container {
+        padding: 1.5rem 1rem;
+    }
+    
+    .notes-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .code-inputs {
+        gap: 0.5rem;
+    }
+    
+    .code-input {
+        width: 45px;
+        height: 55px;
+        font-size: 1.25rem;
+    }
+    
+    .modal-content {
+        max-width: 100%;
+        max-height: 95vh;
+    }
+    
+    .settings-container {
+        padding: 1.5rem 1rem;
+    }
+    
+    .settings-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .device-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-right {
+        gap: 0.25rem;
+    }
+    
+    .btn-icon {
+        padding: 0.375rem;
+    }
+    
+    .btn-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .note-title-input {
+        font-size: 1.25rem;
+    }
+    .app-header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .header-left {
+        gap: 0.375rem;
+    }
+    
+    .header-title {
+        font-size: 0.95rem;
+    }
+    
+    .header-logo {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .header-right {
+        gap: 0.125rem;
+    }
+    
+    .btn-icon {
+        padding: 0.3rem;
+    }
+    
+    .btn-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Cacher le bouton sort sur très petit écran */
+    #sortBtn {
+        display: none;
+    }
+    
+    .toolbar {
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+
+@media (min-width: 640px) {
+    /* Afficher le texte du bouton sur écrans moyens */
+    #newNoteBtn span {
+        display: inline;
+    }
+    
+    #newNoteBtn {
+        padding: 0.625rem 1.25rem;
+    }
+}
+
+@media (min-width: 768px) {
+    /* Réafficher les boutons cachés sur tablette+ */
+    #viewGridBtn,
+    #viewListBtn {
+        display: flex;
+    }
+    
+    .sync-badge {
+        display: flex;
+    }
+    
+    .app-header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .toolbar {
+        padding: 1.25rem 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    #sortBtn {
+        display: flex;
+    }
+}
+
+/* ============================================
+   SCROLLBAR PERSONNALISÉE
+   ============================================ */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================
+   ÉCRAN DE CHARGEMENT
+   ============================================ */
+
+.loading-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gray-100);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+}
+
+.loading-content {
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+}
+
+.loading-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-lg);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 1.5rem;
+    border: 4px solid rgba(0, 0, 0, 0.3);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: black;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.loading-subtext {
+    color: rgba(0, 0, 0, 0.8);
+    font-size: 0.95rem;
+}
+
+.loading-screen.fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* Bouton supprimer sur les notes */
+.note-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn-delete-note {
+    background: transparent;
+    border: none;
+    padding: 0.375rem;
+    cursor: pointer;
+    border-radius: var(--radius);
+    color: var(--gray-400);
+    transition: var(--transition);
+    opacity: 0;
+    flex-shrink: 0;
+}
+
+.btn-delete-note svg {
+    width: 18px;
+    height: 18px;
+}
+
+.note-card:hover .btn-delete-note {
+    opacity: 1;
+}
+
+.btn-delete-note:hover {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+.btn-delete-note:active {
+    transform: scale(0.95);
+}
+
+/* Amélioration de l'indicateur de sync */
+.sync-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.sync-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.sync-badge.sync-syncing {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.sync-badge.sync-syncing .sync-dot {
+    background: #f59e0b;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.sync-badge.sync-synced {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.sync-badge.sync-synced .sync-dot {
+    background: #10b981;
+}
+
+.sync-badge.sync-offline {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.sync-badge.sync-offline .sync-dot {
+    background: #ef4444;
+}
+
+/* Responsive pour le bouton supprimer */
+@media (max-width: 768px) {
+    .btn-delete-note {
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   NOUVEAUX STYLES CSS À AJOUTER
+   ============================================ */
+
+/* Validation des formulaires */
+.form-input.input-error {
+    border-color: var(--danger);
+}
+
+.field-error {
+    display: block;
+    color: var(--danger);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.field-error.hidden {
+    display: none;
+}
+
+/* Indicateur de force du mot de passe */
+.password-strength {
+    margin-top: 0.5rem;
+}
+
+.password-strength.hidden {
+    display: none;
+}
+
+.strength-bar {
+    height: 4px;
+    background: var(--gray-200);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0;
+    transition: all 0.3s ease;
+    border-radius: 2px;
+}
+
+.strength-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Notes épinglées */
+.note-card.pinned {
+    border-color: var(--primary);
+    background: linear-gradient(to bottom, var(--primary-light), var(--white));
+}
+
+.pin-icon {
+    font-size: 1rem;
+    margin-right: 0.5rem;
+}
+
+.note-title-wrapper {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+/* Tags sur les notes */
+.note-tags-display {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.tag-personnel {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.tag-travail {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tag-important {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Boutons de tags dans la modale */
+.note-tags {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tag-btn {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--gray-300);
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tag-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.tag-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--white);
+}
+
+.tag-btn[data-tag="personnel"].active {
+    background: #1e40af;
+    border-color: #1e40af;
+}
+
+.tag-btn[data-tag="travail"].active {
+    background: #92400e;
+    border-color: #92400e;
+}
+
+.tag-btn[data-tag="important"].active {
+    background: #991b1b;
+    border-color: #991b1b;
+}
+
+/* Actions de la modale note */
+.note-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.footer-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+/* Modal de tri */
+.sort-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sort-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: var(--white);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.sort-option svg {
+    width: 20px;
+    height: 20px;
+    color: var(--gray-400);
+}
+
+.sort-option:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.sort-option.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--white);
+}
+
+.sort-option.active svg {
+    color: var(--white);
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    padding: 1rem 1.5rem;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.toast-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.25rem;
+}
+
+.toast-message {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--gray-900);
+}
+
+
+.toast-success .toast-icon {
+    color: var(--success);
+}
+
+
+.toast-error .toast-icon {
+    color: var(--danger);
+}
+
+
+
+.toast-info .toast-icon {
+    color: var(--primary);
+}
+
+.toast-warning {
+    border-left: 4px solid var(--warning);
+}
+
+.toast-warning .toast-icon {
+    color: var(--warning);
+}
+
+/* Amélioration de la disposition des notes en grille */
+.notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* Amélioration du design des cartes de notes */
+.note-card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+}
+
+.note-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.note-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 8px 16px rgba(84, 185, 239, 0.15);
+    transform: translateY(-4px);
+}
+
+.note-card:hover::before {
+    opacity: 1;
+}
+
+.note-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.note-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.note-preview {
+    font-size: 0.925rem;
+    color: var(--gray-600);
+    line-height: 1.6;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    margin-bottom: 0.75rem;
+    flex: 1;
+}
+
+.note-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--gray-100);
+}
+
+.note-date {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+    font-weight: 500;
+}
+
+/* Vue liste améliorée */
+.notes-list .note-card {
+    min-height: auto;
+}
+
+.notes-list .note-preview {
+    -webkit-line-clamp: 2;
+}
+
+/* Responsive amélioré */
+@media (max-width: 768px) {
+    .notes-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .toast {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+    
+    .note-tags {
+        flex-wrap: wrap;
+    }
+    
+    .footer-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-footer {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .footer-left {
+        width: 100%;
+    }
+    
+    .modal-actions {
+        width: 100%;
+    }
+    
+    .modal-actions button {
+        flex: 1;
+    }
+}
+
+/* Animation d'entrée pour les notes */
+@keyframes noteSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.note-card.new-note {
+    animation: noteSlideIn 0.3s ease;
+}
+
+/* États de chargement */
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary.loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--white);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-left: 0.5rem;
+}
+
+/* Amélioration du bouton épingler */
+#pinNoteBtn.active {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+#pinNoteBtn.active:hover {
+    background: var(--primary);
+    color: var(--white);
+}
+
+
+#newNoteBtn {
+    flex-shrink: 0;
+    padding: 0.625rem 1rem;
+}
+
+#newNoteBtn svg {
+    display: block;
+}
+
+#newNoteBtn span {
+    display: none; /* Texte caché sur mobile */
+}
+/* NOUVEAU CSS À AJOUTER - Sera dans un artifact séparé */
+    </style>
+</head>
+<body>
+    <!-- Container pour toutes les pages -->
+    <div id="app"></div>
+    
+    <!-- Templates des pages -->
+    <template id="auth-template">
+        <div class="auth-page">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <img src="./myCloudNotes.png" alt="myCloudNote Logo" class="auth-logo">
+                        <h1 class="auth-title">myCloudNote</h1>
+                        <p class="auth-subtitle">Vos notes, partout, toujours</p>
+                    </div>
+                    
+                    <!-- Login Form -->
+                    <div id="loginSection" class="auth-section">
+                        <div class="error-message hidden" id="loginError"></div>
+                        
+                        <form id="loginForm" class="auth-form" novalidate>
+                            <div class="form-group">
+                                <label for="loginIdentifier">Email ou WhatsApp</label>
+                                <input type="text" id="loginIdentifier" class="form-input" 
+                                       placeholder="email@example.com ou +242..." 
+                                       autocomplete="username"
+                                       required>
+                                <small class="field-error hidden" id="loginIdentifierError"></small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="loginPassword">Mot de passe</label>
+                                <input type="password" id="loginPassword" class="form-input" 
+                                       placeholder="••••••••" 
+                                       autocomplete="current-password" 
+                                       required>
+                                <small class="field-error hidden" id="loginPasswordError"></small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-block">
+                                Se connecter
+                            </button>
+                        </form>
+                        
+                        <div class="auth-switch">
+                            <p>Pas encore de compte ? 
+                                <a href="#" id="showRegisterBtn" class="link-primary">Créer un compte</a>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Register Form -->
+                    <div id="registerSection" class="auth-section hidden">
+                        <div class="error-message hidden" id="registerError"></div>
+                        
+                        <form id="registerForm" class="auth-form" novalidate>
+                            <div class="form-group">
+                                <label for="registerEmail">Email</label>
+                                <input type="email" id="registerEmail" class="form-input" 
+                                       placeholder="votre@email.com" 
+                                       autocomplete="email" 
+                                       required>
+                                <small class="field-error hidden" id="registerEmailError"></small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="registerWhatsapp">Numéro WhatsApp</label>
+                                <input type="tel" id="registerWhatsapp" class="form-input" 
+                                       placeholder="+242 06 123 45 67" 
+                                       required>
+                                <small class="field-error hidden" id="registerWhatsappError"></small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="registerPassword">Mot de passe</label>
+                                <input type="password" id="registerPassword" class="form-input" 
+                                       placeholder="Minimum 6 caractères" 
+                                       autocomplete="new-password" 
+                                       required>
+                                <small class="field-error hidden" id="registerPasswordError"></small>
+                                <div class="password-strength hidden" id="passwordStrength">
+                                    <div class="strength-bar">
+                                        <div class="strength-fill"></div>
+                                    </div>
+                                    <small class="strength-text"></small>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-block">
+                                Créer mon compte
+                            </button>
+                        </form>
+                        
+                        <div class="auth-switch">
+                            <p>Déjà un compte ? 
+                                <a href="#" id="showLoginBtn" class="link-primary">Se connecter</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="confirm-template">
+        <div class="auth-page">
+            <div class="auth-container">
+                <div class="auth-card confirm-card">
+                    <div class="confirm-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    
+                    <h2 class="confirm-title">Vérification WhatsApp</h2>
+                    <p class="confirm-text">Un code à 6 chiffres a été envoyé à votre numéro WhatsApp</p>
+                    
+                    <div class="error-message hidden" id="confirmError"></div>
+                    
+                    <form id="confirmForm">
+                        <div class="code-inputs">
+                            <input type="text" class="code-input" maxlength="1" id="code1" pattern="[0-9]" autofocus>
+                            <input type="text" class="code-input" maxlength="1" id="code2" pattern="[0-9]">
+                            <input type="text" class="code-input" maxlength="1" id="code3" pattern="[0-9]">
+                            <input type="text" class="code-input" maxlength="1" id="code4" pattern="[0-9]">
+                            <input type="text" class="code-input" maxlength="1" id="code5" pattern="[0-9]">
+                            <input type="text" class="code-input" maxlength="1" id="code6" pattern="[0-9]">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-block">
+                            Confirmer
+                        </button>
+                    </form>
+                    
+                    <div class="auth-switch">
+                        <a href="#" id="resendCodeBtn" class="link-primary">Renvoyer le code</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
+    <template id="home-template">
+        <div class="home-page">
+            <header class="app-header">
+                <div class="header-left">
+                    <img src="./myCloudNotes.png" alt="Logo" class="header-logo">
+                    <h1 class="header-title">myCloudNote</h1>
+                </div>
+                
+                <div class="header-right">
+                    <span id="syncStatus" class="sync-badge">●</span>
+                    <button id="viewGridBtn" class="btn-icon active" title="Vue grille">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </button>
+                    <button id="viewListBtn" class="btn-icon" title="Vue liste">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </button>
+                    <button id="sortBtn" class="btn-icon" title="Trier">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M7 12h10m-7 6h4"/>
+                        </svg>
+                    </button>
+                    <button id="settingsBtn" class="btn-icon" title="Paramètres">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3"/>
+                        </svg>
+                    </button>
+                    <button id="logoutBtn" class="btn-icon" title="Déconnexion">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="toolbar">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input type="text" id="searchInput" class="search-input" 
+                           placeholder="Rechercher dans vos notes...">
+                </div>
+                <button id="newNoteBtn" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14m-7-7h14"/>
+                    </svg>
+                    <span>Nouvelle note</span>
+                </button>
+            </div>
+            
+            <main class="notes-container">
+                <div id="notesGrid" class="notes-grid"></div>
+            </main>
+        </div>
+    </template>
+    
+    <template id="settings-template">
+        <div class="settings-page">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="backToNotesBtn" class="btn-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5m7 7l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h1 class="header-title">Paramètres</h1>
+                </div>
+            </header>
+            
+            <div class="settings-container">
+                <section class="settings-section">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Informations du compte
+                    </h2>
+                    
+                    <div class="settings-item">
+                        <span class="item-label">Email</span>
+                        <span class="item-value" id="accountEmail">-</span>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <span class="item-label">WhatsApp</span>
+                        <span class="item-value" id="accountWhatsapp">-</span>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <span class="item-label">Membre depuis</span>
+                        <span class="item-value" id="accountCreated">-</span>
+                    </div>
+                    
+                    <div class="settings-item">
+                        <button class="btn btn-secondary" id="changePasswordBtn">
+                            Changer le mot de passe
+                        </button>
+                    </div>
+                </section>
+                
+                <section class="settings-section">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2"/>
+                            <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
+                        </svg>
+                        Appareils synchronisés (<span id="devicesCount">0</span>)
+                    </h2>
+                    <div id="devicesList"></div>
+                </section>
+                
+                <section class="settings-section">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        Préférences
+                    </h2>
+                    
+                    <div class="settings-item">
+                        <span class="item-label">Mode d'affichage</span>
+                        <div class="btn-group">
+                            <button id="settingsViewGrid" class="btn btn-secondary active">Grille</button>
+                            <button id="settingsViewList" class="btn btn-secondary">Liste</button>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="settings-section danger-section">
+                    <h2 class="section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        Zone de danger
+                    </h2>
+                    
+                    <div class="settings-item">
+                        <div>
+                            <div class="item-label">Supprimer le compte</div>
+                            <div class="item-description">Cette action est irréversible</div>
+                        </div>
+                        <button class="btn btn-danger" id="deleteAccountBtn">Supprimer</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </template>
+    
+    <!-- Modal Editor -->
+    <div id="noteModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <button id="backFromNoteBtn" class="btn-icon" title="Retour">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5m7 7l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <input type="text" id="noteTitleInput" class="note-title-input" 
+                       placeholder="Titre de la note" maxlength="200">
+                <div class="note-actions">
+                    <button id="pinNoteBtn" class="btn-icon" title="Épingler">
+                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <line x1="12" y1="17" x2="12" y2="22"></line>
+  <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.79-.9A2 2 0 0 1 15 10.76V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3v4.76a2 2 0 0 1-1.1 1.8l-1.79.9A2 2 0 0 0 5 15.24V17z"></path>
+</svg>
+
+                    </button>
+                    <button id="closeModal" class="btn-close" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <textarea id="noteContentInput" class="note-content-input" 
+                          placeholder="Commencez à écrire..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <div class="footer-left">
+                    <span class="save-status" id="lastSaved">Sauvegarde automatique</span>
+                    <div class="note-tags">
+                        <button class="tag-btn" data-tag="personnel">Personnel</button>
+                        <button class="tag-btn" data-tag="travail">Travail</button>
+                        <button class="tag-btn" data-tag="important">Important</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="exportNoteBtn" class="btn btn-secondary" title="Exporter">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4m14-7l-5-5m0 0L7 8m5-5v12"/>
+                        </svg>
+                        Exporter
+                    </button>
+                    <button id="saveNoteBtn" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Password -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>Changer le mot de passe</h3>
+                <button id="closePasswordModal" class="btn-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nouveau mot de passe</label>
+                    <input type="password" id="newPassword" class="form-input" 
+                           placeholder="Minimum 6 caractères">
+                </div>
+                <div class="form-group">
+                    <label>Confirmer le mot de passe</label>
+                    <input type="password" id="confirmPassword" class="form-input" 
+                           placeholder="Retapez le mot de passe">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelPasswordBtn" class="btn btn-secondary">Annuler</button>
+                <button id="savePasswordBtn" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Sort -->
+    <div id="sortModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>Trier les notes</h3>
+                <button id="closeSortModal" class="btn-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="sort-options">
+                    <button class="sort-option active" data-sort="date-desc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14m7-7l-7 7-7-7"/>
+                        </svg>
+                        Plus récentes d'abord
+                    </button>
+                    <button class="sort-option" data-sort="date-asc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 19V5m-7 7l7-7 7 7"/>
+                        </svg>
+                        Plus anciennes d'abord
+                    </button>
+                    <button class="sort-option" data-sort="title-asc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M7 12h10m-7 6h4"/>
+                        </svg>
+                        A → Z
+                    </button>
+                    <button class="sort-option" data-sort="title-desc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h4m7 0h7M7 12h10m-7 6h11"/>
+                        </svg>
+                        Z → A
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmation -->
+<div id="confirmationModal" class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h3 id="confirmTitle">Confirmation</h3>
+            <button id="closeConfirmModal" class="btn-close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage"></p>
+        </div>
+        <div class="modal-footer">
+            <button id="confirmCancelBtn" class="btn btn-secondary">Annuler</button>
+            <button id="confirmOkBtn" class="btn btn-danger">Confirmer</button>
+        </div>
+    </div>
+</div>
+    
+    <!-- Scripts -->
+    <script>
+// ============================================
+// APP.JS - Fichier JavaScript Principal AMÉLIORÉ
+// ============================================
+
+// Configuration
+const CONFIG = {
+    API_URL: 'https://api.mcn.ngling.tech/mcn',
+    INACTIVITY_TIMEOUT: 30 * 60 * 1000,
+    AUTO_SAVE_DELAY: 1000,
+    MAX_RETRY_ATTEMPTS: 3,
+    RETRY_DELAY: 1000
+};
+
+// Expressions régulières pour validation
+const REGEX = {
+    EMAIL: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+    WHATSAPP: /^\+242\s*0[0-9]\s*\d{3}\s*\d{2}\s*\d{2}$/,
+    PASSWORD: /^.{6,}$/
+};
+
+// État global
+const state = {
+    token: localStorage.getItem('token'),
+    userId: localStorage.getItem('userId'),
+    dbName: localStorage.getItem('dbName'),
+    deviceId: localStorage.getItem('deviceId'),
+    currentUserId: null,
+    currentDeviceId: null,
+    localDB: null,
+    remoteDB: null,
+    syncHandler: null,
+    currentNote: null,
+    saveTimeout: null,
+    inactivityTimeout: null,
+    viewMode: localStorage.getItem('viewMode') || 'grid',
+    sortMode: localStorage.getItem('sortMode') || 'date-desc',
+    allNotes: [],
+    isOnline: navigator.onLine,
+    savingNote: false,
+    retryAttempts: 0
+};
+
+// ============================================
+// VALIDATION
+// ============================================
+
+const Validator = {
+    email(email) {
+        if (!email) return 'L\'email est requis';
+        if (!REGEX.EMAIL.test(email)) return 'Email invalide';
+        return null;
+    },
+    
+    whatsapp(phone) {
+        if (!phone) return 'Le numéro WhatsApp est requis';
+        // Nettoyer le numéro pour validation
+        const cleaned = phone.replace(/\s/g, '');
+        if (!cleaned.startsWith('+242')) return 'Le numéro doit commencer par +242';
+        if (cleaned.length !== 13) return 'Numéro invalide (format: +242 06 123 45 67)';
+        return null;
+    },
+    
+    password(password) {
+        if (!password) return 'Le mot de passe est requis';
+        if (!REGEX.PASSWORD.test(password)) return 'Le mot de passe doit contenir au moins 6 caractères';
+        return null;
+    },
+    
+    showFieldError(fieldId, message) {
+        const errorEl = document.getElementById(fieldId + 'Error');
+        const inputEl = document.getElementById(fieldId);
+        
+        if (errorEl && inputEl) {
+            if (message) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+                inputEl.classList.add('input-error');
+            } else {
+                errorEl.classList.add('hidden');
+                inputEl.classList.remove('input-error');
+            }
+        }
+    },
+    
+    clearFieldError(fieldId) {
+        this.showFieldError(fieldId, null);
+    },
+    
+    getPasswordStrength(password) {
+        let strength = 0;
+        if (password.length >= 8) strength++;
+        if (password.length >= 12) strength++;
+        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+        if (/\d/.test(password)) strength++;
+        if (/[^a-zA-Z0-9]/.test(password)) strength++;
+        
+        return {
+            score: strength,
+            text: ['Très faible', 'Faible', 'Moyen', 'Fort', 'Très fort'][strength],
+            color: ['#ef4444', '#f59e0b', '#eab308', '#10b981', '#059669'][strength]
+        };
+    }
+};
+
+// ============================================
+// NAVIGATION & PAGES
+// ============================================
+
+const PageManager = {
+    render(templateId) {
+        const template = document.getElementById(templateId);
+        const app = document.getElementById('app');
+        app.innerHTML = template.content.cloneNode(true).firstElementChild.outerHTML;
+    },
+    
+    showAuth() {
+        this.render('auth-template');
+        AuthPage.init();
+    },
+    
+    showConfirm() {
+        this.render('confirm-template');
+        ConfirmPage.init();
+    },
+    
+    showHome() {
+        this.render('home-template');
+        HomePage.init();
+    },
+    
+    showSettings() {
+        this.render('settings-template');
+        SettingsPage.init();
+    }
+};
+
+// ============================================
+// PAGE AUTHENTIFICATION
+// ============================================
+
+const AuthPage = {
+    init() {
+        this.setupEventListeners();
+        this.setupValidation();
+    },
+    
+    setupEventListeners() {
+        document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
+        document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
+        document.getElementById('showRegisterBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showRegister();
+        });
+        document.getElementById('showLoginBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.showLogin();
+        });
+    },
+    
+    setupValidation() {
+        // Validation en temps réel pour le formulaire d'inscription
+        const registerEmail = document.getElementById('registerEmail');
+        const registerWhatsapp = document.getElementById('registerWhatsapp');
+        const registerPassword = document.getElementById('registerPassword');
+        
+        registerEmail?.addEventListener('blur', () => {
+            const error = Validator.email(registerEmail.value);
+            Validator.showFieldError('registerEmail', error);
+        });
+        
+        registerEmail?.addEventListener('input', () => {
+            if (registerEmail.classList.contains('input-error')) {
+                Validator.clearFieldError('registerEmail');
+            }
+        });
+        
+        registerWhatsapp?.addEventListener('blur', () => {
+            const error = Validator.whatsapp(registerWhatsapp.value);
+            Validator.showFieldError('registerWhatsapp', error);
+        });
+        
+        registerWhatsapp?.addEventListener('input', () => {
+            if (registerWhatsapp.classList.contains('input-error')) {
+                Validator.clearFieldError('registerWhatsapp');
+            }
+        });
+        
+        registerPassword?.addEventListener('input', () => {
+            const strength = Validator.getPasswordStrength(registerPassword.value);
+            const strengthEl = document.getElementById('passwordStrength');
+            
+            if (registerPassword.value.length > 0) {
+                strengthEl.classList.remove('hidden');
+                const fill = strengthEl.querySelector('.strength-fill');
+                const text = strengthEl.querySelector('.strength-text');
+                
+                fill.style.width = ((strength.score + 1) * 20) + '%';
+                fill.style.backgroundColor = strength.color;
+                text.textContent = strength.text;
+                text.style.color = strength.color;
+            } else {
+                strengthEl.classList.add('hidden');
+            }
+            
+            if (registerPassword.classList.contains('input-error')) {
+                Validator.clearFieldError('registerPassword');
+            }
+        });
+    },
+    
+    showRegister() {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('registerSection').classList.remove('hidden');
+    },
+    
+    showLogin() {
+        document.getElementById('registerSection').classList.add('hidden');
+        document.getElementById('loginSection').classList.remove('hidden');
+    },
+    
+    async handleLogin(e) {
+        e.preventDefault();
+        
+        const identifier = document.getElementById('loginIdentifier').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        
+        // Validation
+        if (!identifier) {
+            Validator.showFieldError('loginIdentifier', 'Ce champ est requis');
+            return;
+        }
+        if (!password) {
+            Validator.showFieldError('loginPassword', 'Ce champ est requis');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${CONFIG.API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                state.token = data.token;
+                state.userId = data.user_id;
+                state.dbName = data.db_name;
+                state.viewMode = data.preferences?.view_mode || 'grid';
+                state.currentDeviceId = data.device_id;
+                
+                localStorage.setItem('token', state.token);
+                localStorage.setItem('userId', state.userId);
+                localStorage.setItem('dbName', state.dbName);
+                localStorage.setItem('deviceId', state.currentDeviceId);
+                
+             if (data.is_new_device) {
+    Utils.showToast('⚠️ Nouvelle connexion détectée ! Vérifiez votre WhatsApp.', 'warning');
+}
+                
+                App.initApp();
+            } else {
+                if (data.requires_confirmation) {
+                    state.currentUserId = data.user_id;
+                    PageManager.showConfirm();
+                } else {
+                    Utils.showError('loginError', data.error || 'Erreur de connexion');
+                }
+            }
+        } catch (error) {
+            console.error('Erreur login:', error);
+            Utils.showError('loginError', 'Erreur de connexion au serveur. Veuillez réessayer.');
+        }
+    },
+    
+    async handleRegister(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('registerEmail').value.trim();
+        const password = document.getElementById('registerPassword').value;
+        const whatsapp = document.getElementById('registerWhatsapp').value.trim();
+        
+        // Validation
+        const emailError = Validator.email(email);
+        const whatsappError = Validator.whatsapp(whatsapp);
+        const passwordError = Validator.password(password);
+        
+        let hasError = false;
+        
+        if (emailError) {
+            Validator.showFieldError('registerEmail', emailError);
+            hasError = true;
+        }
+        if (whatsappError) {
+            Validator.showFieldError('registerWhatsapp', whatsappError);
+            hasError = true;
+        }
+        if (passwordError) {
+            Validator.showFieldError('registerPassword', passwordError);
+            hasError = true;
+        }
+        
+        if (hasError) return;
+        
+        try {
+            const response = await fetch(`${CONFIG.API_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, whatsapp })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                state.currentUserId = data.user_id;
+                PageManager.showConfirm();
+            } else {
+                Utils.showError('registerError', data.error || 'Erreur lors de l\'inscription');
+            }
+        } catch (error) {
+            console.error('Erreur register:', error);
+            Utils.showError('registerError', 'Erreur de connexion au serveur. Veuillez réessayer.');
+        }
+    }
+};
+
+// ============================================
+// PAGE CONFIRMATION
+// ============================================
+
+const ConfirmPage = {
+    init() {
+        this.setupCodeInputs();
+        this.setupEventListeners();
+    },
+    
+    setupCodeInputs() {
+        const inputs = document.querySelectorAll('.code-input');
+        
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                
+                // N'accepter que les chiffres
+                if (!/^\d*$/.test(value)) {
+                    e.target.value = '';
+                    return;
+                }
+                
+                if (value.length === 1 && index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                
+                pastedData.split('').forEach((char, i) => {
+                    if (inputs[i]) {
+                        inputs[i].value = char;
+                    }
+                });
+                
+                if (pastedData.length === 6) {
+                    inputs[5].focus();
+                }
+            });
+        });
+    },
+    
+    setupEventListeners() {
+        document.getElementById('confirmForm').addEventListener('submit', (e) => this.handleConfirm(e));
+       document.getElementById('resendCodeBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    Utils.showToast('Code renvoyé avec succès !', 'success');
+});
+    },
+    
+    async handleConfirm(e) {
+        e.preventDefault();
+        
+        const code = Array.from({length: 6}, (_, i) => 
+            document.getElementById(`code${i+1}`).value
+        ).join('');
+        
+        if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+            Utils.showError('confirmError', 'Veuillez entrer un code à 6 chiffres valide');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${CONFIG.API_URL}/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    user_id: state.currentUserId, 
+                    code: code 
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                state.token = data.token;
+                state.userId = data.user_id;
+                state.dbName = data.db_name;
+                state.currentDeviceId = data.device_id;
+                
+                localStorage.setItem('token', state.token);
+                localStorage.setItem('userId', state.userId);
+                localStorage.setItem('dbName', state.dbName);
+                localStorage.setItem('deviceId', state.currentDeviceId);
+                
+                App.initApp();
+            } else {
+                Utils.showError('confirmError', data.error || 'Code invalide');
+            }
+        } catch (error) {
+            console.error('Erreur confirm:', error);
+            Utils.showError('confirmError', 'Erreur de connexion au serveur. Veuillez réessayer.');
+        }
+    }
+};
+
+// ============================================
+// PAGE ACCUEIL
+// ============================================
+
+const HomePage = {
+    init() {
+        this.setupEventListeners();
+        Database.init();
+        this.updateViewMode(state.viewMode);
+        this.setupOnlineListener();
+    },
+    
+    setupEventListeners() {
+        document.getElementById('backFromNoteBtn')?.addEventListener('click', () => Notes.closeModal());
+        document.getElementById('newNoteBtn').addEventListener('click', () => Notes.createNew());
+        document.getElementById('logoutBtn').addEventListener('click', () => App.logout());
+        document.getElementById('settingsBtn').addEventListener('click', () => PageManager.showSettings());
+        document.getElementById('viewGridBtn').addEventListener('click', () => this.updateViewMode('grid'));
+        document.getElementById('viewListBtn').addEventListener('click', () => this.updateViewMode('list'));
+        document.getElementById('sortBtn').addEventListener('click', () => this.showSortModal());
+        document.getElementById('searchInput').addEventListener('input', (e) => Notes.search(e.target.value));
+        
+        // Modal Note
+        document.getElementById('closeModal').addEventListener('click', () => Notes.closeModal());
+        document.getElementById('closeModalBtn')?.addEventListener('click', () => Notes.closeModal());
+        document.getElementById('saveNoteBtn').addEventListener('click', () => Notes.save());
+        document.getElementById('noteTitleInput').addEventListener('input', () => Notes.autoSave());
+        document.getElementById('noteContentInput').addEventListener('input', () => Notes.autoSave());
+        document.getElementById('exportNoteBtn')?.addEventListener('click', () => Notes.exportCurrent());
+        document.getElementById('pinNoteBtn')?.addEventListener('click', () => Notes.togglePin());
+        
+        // Tags
+        document.querySelectorAll('.tag-btn').forEach(btn => {
+            btn.addEventListener('click', () => Notes.toggleTag(btn.dataset.tag));
+        });
+        
+        document.getElementById('noteModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                Notes.closeModal();
+            }
+        });
+        
+        // Modal Sort
+        document.getElementById('closeSortModal')?.addEventListener('click', () => this.closeSortModal());
+        document.getElementById('sortModal')?.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                this.closeSortModal();
+            }
+        });
+        
+        document.querySelectorAll('.sort-option').forEach(btn => {
+            btn.addEventListener('click', () => this.handleSort(btn.dataset.sort));
+        });
+    },
+    
+    setupOnlineListener() {
+        window.addEventListener('online', () => {
+            state.isOnline = true;
+            Sync.updateStatus('synced');
+            Database.checkConnection();
+        });
+        
+        window.addEventListener('offline', () => {
+            state.isOnline = false;
+            Sync.updateStatus('offline');
+        });
+    },
+    
+    async updateViewMode(mode) {
+        state.viewMode = mode;
+        localStorage.setItem('viewMode', mode);
+        
+        const gridBtn = document.getElementById('viewGridBtn');
+        const listBtn = document.getElementById('viewListBtn');
+        const container = document.getElementById('notesGrid');
+        
+        if (mode === 'grid') {
+            gridBtn.classList.add('active');
+            listBtn.classList.remove('active');
+            container.className = 'notes-grid';
+        } else {
+            listBtn.classList.add('active');
+            gridBtn.classList.remove('active');
+            container.className = 'notes-list';
+        }
+        
+        Notes.render(state.allNotes);
+        
+        if (state.isOnline) {
+            try {
+                await fetch(`${CONFIG.API_URL}/preferences`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${state.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ view_mode: mode })
+                });
+            } catch (error) {
+                console.error('Erreur sauvegarde préférences:', error);
+            }
+        }
+    },
+    
+    showSortModal() {
+        document.getElementById('sortModal').classList.add('active');
+        
+        // Mettre à jour l'option active
+        document.querySelectorAll('.sort-option').forEach(btn => {
+            if (btn.dataset.sort === state.sortMode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    },
+    
+    closeSortModal() {
+        document.getElementById('sortModal').classList.remove('active');
+    },
+    
+    handleSort(sortMode) {
+        state.sortMode = sortMode;
+        localStorage.setItem('sortMode', sortMode);
+        
+        Notes.sortNotes();
+        Notes.render(state.allNotes);
+        
+        this.closeSortModal();
+    }
+};
+
+// ============================================
+// PAGE PARAMÈTRES
+// ============================================
+
+const SettingsPage = {
+    init() {
+        this.setupEventListeners();
+        this.loadSettings();
+    },
+    
+    setupEventListeners() {
+        document.getElementById('backToNotesBtn').addEventListener('click', () => PageManager.showHome());
+        document.getElementById('changePasswordBtn').addEventListener('click', () => this.showPasswordModal());
+        document.getElementById('settingsViewGrid').addEventListener('click', () => this.updateViewMode('grid'));
+        document.getElementById('settingsViewList').addEventListener('click', () => this.updateViewMode('list'));
+        
+        // Password modal
+        document.getElementById('closePasswordModal').addEventListener('click', () => this.closePasswordModal());
+        document.getElementById('cancelPasswordBtn').addEventListener('click', () => this.closePasswordModal());
+        document.getElementById('savePasswordBtn').addEventListener('click', () => this.changePassword());
+        
+        document.getElementById('passwordModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                this.closePasswordModal();
+            }
+        });
+    },
+    
+    async loadSettings() {
+        try {
+            const accountResponse = await fetch(`${CONFIG.API_URL}/account`, {
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+            const accountData = await accountResponse.json();
+            
+            document.getElementById('accountEmail').textContent = accountData.email;
+            document.getElementById('accountWhatsapp').textContent = accountData.whatsapp;
+            document.getElementById('accountCreated').textContent = Utils.formatDate(accountData.created_at);
+            
+            const devicesResponse = await fetch(`${CONFIG.API_URL}/devices`, {
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+            const devicesData = await devicesResponse.json();
+            
+            this.renderDevices(devicesData.devices);
+            
+        } catch (error) {
+            console.error('Erreur chargement paramètres:', error);
+        }
+    },
+    
+    renderDevices(devices) {
+        const container = document.getElementById('devicesList');
+        const currentDevice = state.deviceId;
+        
+        document.getElementById('devicesCount').textContent = devices.length;
+        
+        if (devices.length === 0) {
+            container.innerHTML = '<p class="empty-text">Aucun appareil connecté</p>';
+            return;
+        }
+        
+        container.innerHTML = devices.map(device => `
+            <div class="device-card">
+                <div class="device-icon">
+                    ${device.is_mobile ? '📱' : device.is_tablet ? '📱' : '💻'}
+                </div>
+                <div class="device-info">
+                    <div class="device-name">
+                        ${device.device_name}
+                        ${device.device_id === currentDevice ? '<span class="badge badge-success">Cet appareil</span>' : ''}
+                    </div>
+                    <div class="device-details">
+                        ${device.browser} • ${device.os}<br>
+                        Connecté le ${Utils.formatDate(device.connected_at)}
+                    </div>
+                </div>
+                ${device.device_id !== currentDevice ? `
+                    <button class="btn btn-danger btn-sm" onclick="SettingsPage.removeDevice('${device.device_id}')">
+                        Supprimer
+                    </button>
+                ` : ''}
+            </div>
+        `).join('');
+    },
+    
+    async removeDevice(deviceId) {
+        const confirmed = await Utils.showConfirm(
+        'Êtes-vous sûr de vouloir supprimer cet appareil de votre liste ?',
+        'Supprimer l\'appareil',
+        'Supprimer',
+        'Annuler',
+        true
+    );
+    
+    if (!confirmed) return;
+        
+        try {
+            await fetch(`${CONFIG.API_URL}/devices/${deviceId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+            
+            this.loadSettings();
+        } catch (error) {
+            console.error('Erreur suppression appareil:', error);
+        }
+    },
+    
+    updateViewMode(mode) {
+        const gridBtn = document.getElementById('settingsViewGrid');
+        const listBtn = document.getElementById('settingsViewList');
+        
+        if (mode === 'grid') {
+            gridBtn.classList.add('active');
+            listBtn.classList.remove('active');
+        } else {
+            listBtn.classList.add('active');
+            gridBtn.classList.remove('active');
+        }
+        
+        state.viewMode = mode;
+    },
+    
+    showPasswordModal() {
+        document.getElementById('passwordModal').classList.add('active');
+    },
+    
+    closePasswordModal() {
+        document.getElementById('passwordModal').classList.remove('active');
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+    },
+    
+    async changePassword() {
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        if (!newPassword || newPassword.length < 6) {
+    Utils.showToast('Le mot de passe doit contenir au moins 6 caractères', 'error');
+    return;
+}
+
+if (newPassword !== confirmPassword) {
+    Utils.showToast('Les mots de passe ne correspondent pas', 'error');
+    return;
+}
+        try {
+            await fetch(`${CONFIG.API_URL}/account`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${state.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password: newPassword })
+            });
+            
+            Utils.showToast('Mot de passe modifié avec succès', 'success');
+this.closePasswordModal();
+            
+        } catch (error) {
+            console.error('Erreur changement mot de passe:', error);
+            Utils.showToast('Erreur lors du changement de mot de passe', 'error');
+        }
+    }
+};
+
+// Exposer globalement pour onclick
+window.SettingsPage = SettingsPage;
+
+// ============================================
+// DATABASE AVEC GESTION D'ERREURS AMÉLIORÉE
+// ============================================
+
+const Database = {
+    init() {
+        state.localDB = new PouchDB(state.dbName);
+        state.remoteDB = new PouchDB(`https://admin:admin@couchdb.mcn.ngling.tech/${state.dbName}`, {skip_setup: true});
+        
+        this.checkConnection();
+        this.setupSync();
+        
+        Notes.load();
+    },
+    
+    setupSync() {
+        state.syncHandler = state.localDB.sync(state.remoteDB, {
+            live: true,
+            retry: true
+        }).on('change', function (info) {
+            Sync.updateStatus('synced');
+            Notes.load();
+        }).on('paused', function (err) {
+            Sync.updateStatus('synced');
+        }).on('active', function () {
+            Sync.updateStatus('syncing');
+        }).on('error', function (err) {
+            console.error('Erreur de synchronisation:', err);
+            Sync.updateStatus('offline');
+        });
+    },
+    
+    async checkConnection() {
+        if (!state.isOnline) {
+            Sync.updateStatus('offline');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${CONFIG.API_URL}/verify`, {
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+            
+            if (response.ok || response.status === 401) {
+                Sync.updateStatus('synced');
+            } else {
+                Sync.updateStatus('offline');
+            }
+        } catch (error) {
+            Sync.updateStatus('offline');
+        }
+    }
+};
+
+// ============================================
+// SYNC
+// ============================================
+
+const Sync = {
+    updateStatus(status) {
+        const el = document.getElementById('syncStatus');
+        if (!el) return;
+        
+        el.className = 'sync-badge sync-' + status;
+        
+        if (status === 'syncing') {
+            el.innerHTML = '<span class="sync-dot"></span> Sync...';
+            el.title = 'Synchronisation en cours...';
+        } else if (status === 'synced') {
+            el.innerHTML = '<span class="sync-dot"></span> Synchronisé';
+            el.title = 'Synchronisé avec le cloud';
+        } else if (status === 'offline') {
+            el.innerHTML = '<span class="sync-dot"></span> Hors ligne';
+            el.title = 'Mode hors ligne - Vos notes sont disponibles localement';
+        }
+    }
+};
+
+// ============================================
+// NOTES AVEC GESTION D'ERREURS AMÉLIORÉE
+// ============================================
+
+const Notes = {
+    async load() {
+        try {
+            const result = await state.localDB.allDocs({
+                include_docs: true,
+                descending: true
+            });
+            
+            state.allNotes = result.rows
+                .map(row => row.doc)
+                .filter(doc => !doc._id.startsWith('_design'));
+            
+            this.sortNotes();
+            this.render(state.allNotes);
+        } catch (error) {
+            console.error('Erreur de chargement:', error);
+            Utils.showToast('Erreur lors du chargement des notes', 'error');
+        }
+    },
+    
+    sortNotes() {
+        const sortFunctions = {
+            'date-desc': (a, b) => new Date(b.updated_at) - new Date(a.updated_at),
+            'date-asc': (a, b) => new Date(a.updated_at) - new Date(b.updated_at),
+            'title-asc': (a, b) => (a.title || '').localeCompare(b.title || ''),
+            'title-desc': (a, b) => (b.title || '').localeCompare(a.title || '')
+        };
+        
+        const sortFn = sortFunctions[state.sortMode] || sortFunctions['date-desc'];
+        
+        // Trier avec les notes épinglées en premier
+        state.allNotes.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return sortFn(a, b);
+        });
+    },
+    
+    render(notes) {
+        const container = document.getElementById('notesGrid');
+        if (!container) return;
+        
+        if (notes.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <h2>Aucune note</h2>
+                    <p>Créez votre première note pour commencer</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = notes.map(note => `
+            <div class="note-card ${state.viewMode === 'list' ? 'list-view' : ''} ${note.pinned ? 'pinned' : ''}" data-id="${note._id}">
+                <div class="note-header">
+                    <div class="note-title-wrapper">
+                        ${note.pinned ? '<span class="pin-icon">📌</span>' : ''}
+                        <h3 class="note-title">${Utils.escapeHtml(note.title || 'Sans titre')}</h3>
+                    </div>
+                    <button class="btn-delete-note" data-id="${note._id}" title="Supprimer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
+                    </button>
+                </div>
+                ${note.tags && note.tags.length > 0 ? `
+                    <div class="note-tags-display">
+                        ${note.tags.map(tag => `<span class="tag tag-${tag}">${tag}</span>`).join('')}
+                    </div>
+                ` : ''}
+                <p class="note-preview">${Utils.escapeHtml(note.content || '')}</p>
+                <div class="note-footer">
+                    <span class="note-date">${Utils.formatDate(note.updated_at)}</span>
+                </div>
+            </div>
+        `).join('');
+        
+        // Ajouter la classe 'new-note' uniquement aux nouvelles notes
+        setTimeout(() => {
+            document.querySelectorAll('.note-card').forEach(card => {
+                card.classList.remove('new-note');
+            });
+        }, 300);
+
+        // Événements pour ouvrir les notes
+        document.querySelectorAll('.note-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.btn-delete-note')) {
+                    this.open(card.dataset.id);
+                }
+            });
+        });
+        
+        // Événements pour supprimer les notes
+        document.querySelectorAll('.btn-delete-note').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.delete(btn.dataset.id);
+            });
+        });
+    },
+
+    async delete(noteId) {
+        const confirmed = await Utils.showConfirm(
+        'Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.',
+        'Supprimer la note',
+        'Supprimer',
+        'Annuler',
+        true
+    );
+    
+    if (!confirmed) return;
+        
+        try {
+            const note = await state.localDB.get(noteId);
+            await state.localDB.remove(note);
+            await this.load();
+            Utils.showToast('Note supprimée', 'success');
+        } catch (error) {
+            console.error('Erreur de suppression:', error);
+            Utils.showToast('Erreur lors de la suppression de la note', 'error');
+        }
+    },
+    
+    async createNew() {
+        const note = {
+            _id: new Date().getTime().toString(),
+            title: '',
+            content: '',
+            tags: [],
+            pinned: false,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        try {
+            await state.localDB.put(note);
+            this.open(note._id);
+        } catch (error) {
+            console.error('Erreur de création:', error);
+            Utils.showToast('Erreur lors de la création de la note', 'error');
+        }
+    },
+    
+    async open(noteId) {
+        try {
+            state.currentNote = await state.localDB.get(noteId);
+            
+            document.getElementById('noteTitleInput').value = state.currentNote.title || '';
+            document.getElementById('noteContentInput').value = state.currentNote.content || '';
+            
+            // Mettre à jour les tags actifs
+            document.querySelectorAll('.tag-btn').forEach(btn => {
+                if (state.currentNote.tags && state.currentNote.tags.includes(btn.dataset.tag)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Mettre à jour l'état du bouton épingler
+            const pinBtn = document.getElementById('pinNoteBtn');
+            if (pinBtn) {
+                if (state.currentNote.pinned) {
+                    pinBtn.classList.add('active');
+                    pinBtn.title = 'Désépingler';
+                } else {
+                    pinBtn.classList.remove('active');
+                    pinBtn.title = 'Épingler';
+                }
+            }
+            
+            document.getElementById('noteModal').classList.add('active');
+            document.getElementById('noteTitleInput').focus();
+        } catch (error) {
+            console.error('Erreur d\'ouverture:', error);
+            Utils.showToast('Erreur lors de l\'ouverture de la note', 'error');
+        }
+    },
+    
+    async save() {
+        if (!state.currentNote || state.savingNote) return;
+        
+        state.savingNote = true;
+        state.retryAttempts = 0;
+        
+        await this.saveWithRetry();
+    },
+    
+    async saveWithRetry() {
+        const title = document.getElementById('noteTitleInput').value.trim();
+        const content = document.getElementById('noteContentInput').value.trim();
+        
+        try {
+            // Récupérer la dernière version de la note pour éviter les conflits
+            const latestNote = await state.localDB.get(state.currentNote._id);
+            
+            latestNote.title = title;
+            latestNote.content = content;
+            latestNote.updated_at = new Date().toISOString();
+            
+            const result = await state.localDB.put(latestNote);
+            
+            // Mettre à jour l'état avec la nouvelle révision
+            state.currentNote = {
+                ...latestNote,
+                _rev: result.rev
+            };
+            
+            document.getElementById('lastSaved').textContent = 'Sauvegardé à ' + new Date().toLocaleTimeString();
+            state.savingNote = false;
+            state.retryAttempts = 0;
+            
+            await this.load();
+        } catch (error) {
+            console.error('Erreur de sauvegarde:', error);
+            
+            // Gestion des conflits de version
+            if (error.name === 'conflict' && state.retryAttempts < CONFIG.MAX_RETRY_ATTEMPTS) {
+                state.retryAttempts++;
+                console.log(`Tentative de sauvegarde ${state.retryAttempts}/${CONFIG.MAX_RETRY_ATTEMPTS}`);
+                
+                // Attendre un peu avant de réessayer
+                await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY));
+                
+                // Recharger la note et réessayer
+                try {
+                    state.currentNote = await state.localDB.get(state.currentNote._id);
+                    await this.saveWithRetry();
+                } catch (retryError) {
+                    console.error('Erreur lors de la nouvelle tentative:', retryError);
+                    state.savingNote = false;
+                    Utils.showToast('Erreur lors de la sauvegarde. Veuillez réessayer.', 'error');
+                }
+            } else {
+                state.savingNote = false;
+                document.getElementById('lastSaved').textContent = '❌ Erreur de sauvegarde';
+                Utils.showToast('Erreur lors de la sauvegarde de la note', 'error');
+            }
+        }
+    },
+    
+    autoSave() {
+        if (!state.currentNote || state.savingNote) return;
+        
+        clearTimeout(state.saveTimeout);
+        state.saveTimeout = setTimeout(async () => {
+            await this.save();
+        }, CONFIG.AUTO_SAVE_DELAY);
+    },
+    
+    closeModal() {
+        document.getElementById('noteModal').classList.remove('active');
+        state.currentNote = null;
+        state.savingNote = false;
+        clearTimeout(state.saveTimeout);
+        this.load();
+    },
+    
+    search(query) {
+        if (!query.trim()) {
+            this.render(state.allNotes);
+            return;
+        }
+        
+        const filtered = state.allNotes.filter(note => {
+            const searchText = (note.title + ' ' + note.content).toLowerCase();
+            const tags = (note.tags || []).join(' ').toLowerCase();
+            return searchText.includes(query.toLowerCase()) || tags.includes(query.toLowerCase());
+        });
+        
+        this.render(filtered);
+    },
+    
+    async togglePin() {
+        if (!state.currentNote) return;
+        
+        try {
+            const latestNote = await state.localDB.get(state.currentNote._id);
+            latestNote.pinned = !latestNote.pinned;
+            
+            const result = await state.localDB.put(latestNote);
+            state.currentNote = {
+                ...latestNote,
+                _rev: result.rev
+            };
+            
+            const pinBtn = document.getElementById('pinNoteBtn');
+            if (pinBtn) {
+                if (latestNote.pinned) {
+                    pinBtn.classList.add('active');
+                    pinBtn.title = 'Désépingler';
+                    Utils.showToast('Note épinglée', 'success');
+                } else {
+                    pinBtn.classList.remove('active');
+                    pinBtn.title = 'Épingler';
+                    Utils.showToast('Note désépinglée', 'success');
+                }
+            }
+            
+            await this.load();
+        } catch (error) {
+            console.error('Erreur toggle pin:', error);
+            Utils.showToast('Erreur lors de l\'épinglage', 'error');
+        }
+    },
+    
+    async toggleTag(tag) {
+        if (!state.currentNote) return;
+        
+        try {
+            const latestNote = await state.localDB.get(state.currentNote._id);
+            
+            if (!latestNote.tags) {
+                latestNote.tags = [];
+            }
+            
+            const tagIndex = latestNote.tags.indexOf(tag);
+            if (tagIndex > -1) {
+                latestNote.tags.splice(tagIndex, 1);
+            } else {
+                latestNote.tags.push(tag);
+            }
+            
+            const result = await state.localDB.put(latestNote);
+            state.currentNote = {
+                ...latestNote,
+                _rev: result.rev
+            };
+            
+            // Mettre à jour visuellement les boutons de tags
+            document.querySelectorAll('.tag-btn').forEach(btn => {
+                if (btn.dataset.tag === tag) {
+                    btn.classList.toggle('active');
+                }
+            });
+            
+            await this.load();
+        } catch (error) {
+            console.error('Erreur toggle tag:', error);
+            Utils.showToast('Erreur lors de la modification du tag', 'error');
+        }
+    },
+    
+    exportCurrent() {
+        if (!state.currentNote) return;
+        
+        const title = state.currentNote.title || 'Sans titre';
+        const content = state.currentNote.content || '';
+        const date = new Date().toLocaleDateString('fr-FR');
+        
+        const exportContent = `${title}\n\n${content}\n\n---\nExporté le ${date}`;
+        
+        const blob = new Blob([exportContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        Utils.showToast('Note exportée', 'success');
+    }
+};
+
+// ============================================
+// UTILS
+// ============================================
+
+const Utils = {
+    showError(elementId, message) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        
+        el.textContent = message;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    },
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    formatDate(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) {
+            return 'Aujourd\'hui à ' + date.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        } else if (diffDays === 1) {
+            return 'Hier à ' + date.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        } else if (diffDays < 7) {
+            return diffDays + ' jours';
+        } else {
+            return date.toLocaleDateString('fr-FR');
+        }
+    },
+    
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+               <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warning' ? '⚠' : 'ℹ'}</span>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 3000);
+    },
+
+    showConfirm(message, title = 'Confirmation', okText = 'Confirmer', cancelText = 'Annuler', isDanger = true) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirmationModal');
+        const titleEl = document.getElementById('confirmTitle');
+        const messageEl = document.getElementById('confirmMessage');
+        const okBtn = document.getElementById('confirmOkBtn');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+        const closeBtn = document.getElementById('closeConfirmModal');
+        
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        okBtn.textContent = okText;
+        cancelBtn.textContent = cancelText;
+        
+        // Changer la classe du bouton OK selon isDanger
+        if (isDanger) {
+            okBtn.className = 'btn btn-danger';
+        } else {
+            okBtn.className = 'btn btn-primary';
+        }
+        
+        modal.classList.add('active');
+        
+        const cleanup = () => {
+            modal.classList.remove('active');
+            okBtn.replaceWith(okBtn.cloneNode(true));
+            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            closeBtn.replaceWith(closeBtn.cloneNode(true));
+        };
+        
+        document.getElementById('confirmOkBtn').addEventListener('click', () => {
+            cleanup();
+            resolve(true);
+        });
+        
+        document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+            cleanup();
+            resolve(false);
+        });
+        
+        document.getElementById('closeConfirmModal').addEventListener('click', () => {
+            cleanup();
+            resolve(false);
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                cleanup();
+                resolve(false);
+            }
+        });
+    });
+}
+};
+
+// ============================================
+// APP PRINCIPAL
+// ============================================
+
+const App = {
+    async init() {
+        // Toujours essayer d'afficher la page d'accueil en premier
+        if (state.token && state.userId && state.dbName) {
+            await this.verifyToken();
+        } else {
+            // Pas de token, rediriger vers auth
+            PageManager.showAuth();
+        }
+        
+        this.setupInactivity();
+        this.setupServiceWorker();
+    },
+    
+    async verifyToken() {
+        this.showLoadingScreen();
+        
+        try {
+            const response = await fetch(`${CONFIG.API_URL}/verify`, {
+                headers: { 'Authorization': `Bearer ${state.token}` }
+            });
+
+            if (response.status === 503) {
+                console.warn('Serveur indisponible (503), passage en mode hors ligne');
+                
+                state.userId = localStorage.getItem('userId');
+                state.dbName = localStorage.getItem('dbName');
+                state.viewMode = localStorage.getItem('viewMode') || 'grid';
+
+                if (state.userId && state.dbName) {
+                    console.log('Démarrage en mode hors ligne');
+                    this.hideLoadingScreen();
+                    this.initApp();
+                    return;
+                } else {
+                    this.hideLoadingScreen();
+                    this.logout();
+                    return;
+                }
+            }
+
+            if (!response.ok) {
+                this.hideLoadingScreen();
+                this.logout();
+                return;
+            }
+
+            const data = await response.json();
+            state.userId = data.user_id;
+            state.dbName = data.db_name;
+            state.viewMode = data.preferences?.view_mode || 'grid';
+
+            localStorage.setItem('userId', state.userId);
+            localStorage.setItem('dbName', state.dbName);
+
+            this.hideLoadingScreen();
+            this.initApp();
+
+        } catch (error) {
+            console.warn('Erreur réseau, tentative en mode hors ligne');
+
+            state.userId = localStorage.getItem('userId');
+            state.dbName = localStorage.getItem('dbName');
+            state.viewMode = localStorage.getItem('viewMode') || 'grid';
+
+            if (state.userId && state.dbName) {
+                console.log('Démarrage en mode hors ligne');
+                this.hideLoadingScreen();
+                this.initApp();
+            } else {
+                this.hideLoadingScreen();
+                this.logout();
+            }
+        }
+    },
+
+    showLoadingScreen() {
+        const loadingHTML = `
+            <div id="loadingScreen" class="loading-screen">
+                <div class="loading-content">
+                    <img src="./myCloudNotes.png" alt="Logo" class="loading-logo">
+                    <div class="loading-spinner"></div>
+                    <p class="loading-text">Vérification de la connexion...</p>
+                    <p class="loading-subtext">Veuillez patienter</p>
+                </div>
+            </div>
+        `;
+        document.getElementById('app').innerHTML = loadingHTML;
+    },
+
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                loadingScreen.remove();
+            }, 300);
+        }
+    },
+    
+    initApp() {
+        PageManager.showHome();
+    },
+    
+    logout() {
+        if (state.syncHandler) {
+            state.syncHandler.cancel();
+        }
+        
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('dbName');
+        
+        state.token = null;
+        state.userId = null;
+        state.dbName = null;
+        
+        PageManager.showAuth();
+    },
+    
+    setupInactivity() {
+        const resetTimer = () => {
+            clearTimeout(state.inactivityTimeout);
+            
+            if (state.token) {
+                state.inactivityTimeout = setTimeout(async () => {
+    const confirmed = await Utils.showConfirm(
+        'Vous avez été inactif pendant 30 minutes. Voulez-vous rester connecté ?',
+        'Session expirée',
+        'Rester connecté',
+        'Se déconnecter',
+        false
+    );
+    
+    if (!confirmed) {
+        this.logout();
+    } else {
+        resetTimer();
+    }
+}, CONFIG.INACTIVITY_TIMEOUT);
+            }
+        };
+        
+        ['mousedown', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetTimer, true);
+        });
+        
+        resetTimer();
+    },
+    
+    setupServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker enregistré:', registration.scope);
+                        
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    const confirmed = Utils.showConfirm(
+    'Une nouvelle version de l\'application est disponible. Voulez-vous mettre à jour maintenant ?',
+    'Mise à jour disponible',
+    'Mettre à jour',
+    'Plus tard',
+    false
+);
+
+if (confirmed) {
+    newWorker.postMessage({ type: 'SKIP_WAITING' });
+    window.location.reload();
+}
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('❌ Erreur Service Worker:', error);
+                    });
+                
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
+            });
+        }
+    }
+};
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Q8V320D59W"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-Q8V320D59W');
+</script>
+</body>
+</html>

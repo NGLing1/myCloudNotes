@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  couchdb:
+    image: couchdb:3.3
+    container_name: myCloudNote-couchdb
+    restart: always
+    ports:
+      - "5984:5984"
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=admin
+      - COUCHDB_CORS_ENABLE=true
+      - COUCHDB_CORS_ORIGINS=http://localhost:5500
+      - COUCHDB_CORS_HEADERS=accept,authorization,content-type,origin,referer
+      - COUCHDB_CORS_CREDENTIALS=true
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    networks:
+      - myCloudNote-network
+
+  backend:
+    build: .
+    container_name: myCloudNote-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=votre-cle-secrete-ultra-securisee-a-changer
+      - COUCHDB_URL=http://admin:admin@couchdb:5984/
+    depends_on:
+      - couchdb
+    networks:
+      - myCloudNote-network
+    volumes:
+      - ./:/app
+
+volumes:
+  couchdb_data:
+
+networks:
+  myCloudNote-network:
+    driver: bridge
